@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批次圖片重新命名工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --primary-hover: #357ABD;
+            --bg-color: #F5F7FA;
+            --text-color: #333333;
+            --border-color: #E4E7EB;
+            --success-color: #27AE60;
+            --warning-color: #F2994A;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--primary-color);
+            border-radius: 8px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #f9fcff;
+            margin-bottom: 2rem;
+        }
+
+        .drop-zone.dragover {
+            background-color: #e6f2ff;
+            border-color: var(--primary-hover);
+            transform: scale(1.02);
+        }
+
+        .drop-zone p {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #555;
+        }
+
+        .drop-zone span {
+            display: block;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .table-container {
+            display: none;
+            margin-top: 1rem;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #f8fafc;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .status-label {
+            color: var(--success-color);
+            font-weight: 500;
+        }
+
+        .status-warning {
+            color: var(--warning-color);
+            font-weight: 500;
+        }
+
+        .actions {
+            display: none;
+            margin-top: 1.5rem;
+            text-align: right;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>批次圖片重新命名工具</h1>
+        
+        <div class="drop-zone" id="drop-zone">
+            <p>點擊此處選擇圖片，或將圖片拖曳至此</p>
+            <span>（支援 .jpg, .png 等常見格式）</span>
+            <input type="file" id="file-input" multiple accept="image/*">
+        </div>
+
+        <div class="table-container" id="table-container">
+            <table id="preview-table">
+                <thead>
+                    <tr>
+                        <th>原始檔名</th>
+                        <th>新檔名</th>
+                        <th>狀態預覽</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="actions" id="actions-container">
+            <button id="download-btn">確認並打包下載 ZIP</button>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const tableContainer = document.getElementById('table-container');
+        const tbody = document.querySelector('#preview-table tbody');
+        const actionsContainer = document.getElementById('actions-container');
+        const downloadBtn = document.getElementById('download-btn');
+
+        let processedFiles = []; // 儲存處理過後的檔案物件
+
+        // 點擊上傳
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // 拖曳事件處理
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                processFiles(Array.from(e.dataTransfer.files));
+            }
+        });
+
+        // input 改變事件
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                processFiles(Array.from(e.target.files));
+            }
+        });
+
+        // 核心處理邏輯
+        function processFiles(files) {
+            // 1. 依照原始檔名進行字母/數字排序 (Alphanumeric Sort)
+            files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+            processedFiles = [];
+            let currentLabel = "";
+            let currentCounter = 0;
+
+            tbody.innerHTML = ''; // 清空表格
+
+            files.forEach(file => {
+                const originalName = file.name;
+                let newName = "";
+                let statusHtml = "";
+                
+                // 取得副檔名
+                const lastDotIndex = originalName.lastIndexOf(".");
+                const ext = lastDotIndex !== -1 ? originalName.slice(lastDotIndex) : "";
+                
+                // 辨識「標籤圖」的 Regex
+                // 尋找底線 "_" 後面跟著文字，且結尾帶有 "(1)" 的檔名。例如 "_巴士站5(1).jpg"
+                const labelRegex = /_([^_]+?)\(1\)(?=\.[^.]+$)/i;
+                const match = originalName.match(labelRegex);
+
+                if (match) {
+                    // 偵測到標籤圖
+                    currentLabel = match[1]; // 萃取出的主體名稱 (e.g., 巴士站5)
+                    currentCounter = 1;
+                    newName = `${currentLabel}(${currentCounter})${ext}`;
+                    statusHtml = `<span class="status-label">✅ 標籤圖更新: ${currentLabel}</span>`;
+                } else {
+                    // 偵測到一般圖片
+                    if (currentLabel !== "") {
+                        currentCounter++;
+                        newName = `${currentLabel}(${currentCounter})${ext}`;
+                        statusHtml = `<span class="status-label">✓ 自動遞增</span>`;
+                    } else {
+                        // 如果一開始就沒有遇到標籤圖，保留原名
+                        newName = originalName;
+                        statusHtml = `<span class="status-warning">⚠️ 無所屬標籤，保持原名</span>`;
+                    }
+                }
+
+                processedFiles.push({ file, newName });
+
+                // 渲染至表格
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${originalName}</td>
+                    <td><strong>${newName}</strong></td>
+                    <td>${statusHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // 顯示表格與下載按鈕
+            tableContainer.style.display = 'block';
+            actionsContainer.style.display = 'block';
+        }
+
+        // 打包下載邏輯
+        downloadBtn.addEventListener('click', async () => {
+            if (processedFiles.length === 0) return;
+
+            const originalText = downloadBtn.innerText;
+            downloadBtn.innerText = "打包中，請稍候...";
+            downloadBtn.disabled = true;
+
+            try {
+                const zip = new JSZip();
+                
+                // 將每個檔案加入 zip 中
+                processedFiles.forEach(item => {
+                    zip.file(item.newName, item.file);
+                });
+
+                // 產生 zip blob
+                const content = await zip.generateAsync({ type: "blob" });
+                
+                // 觸發下載
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "Renamed_Images.zip";
+                document.body.appendChild(a);
+                a.click();
+                
+                // 清理
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("ZIP 打包失敗:", error);
+                alert("打包過程發生錯誤，請查看 Console。");
+            } finally {
+                downloadBtn.innerText = originalText;
+                downloadBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
