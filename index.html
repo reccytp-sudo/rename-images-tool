@@ -39,4 +39,344 @@
             max-width: 900px;
             background: #FFFFFF;
             border-radius: 16px; /* 更圓潤的邊角 */
-            box-
+            box-shadow: 0 8px 30px rgba(92, 77, 67, 0.08); /* 柔和的暖色陰影 */
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--primary-color);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #FDFCFB; /* 極淡的奶油色 */
+            margin-bottom: 2rem;
+        }
+
+        .drop-zone.dragover {
+            background-color: #F5EBE1; /* 拖曳時加深的奶茶底色 */
+            border-color: var(--primary-hover);
+            transform: scale(1.01);
+        }
+
+        .drop-zone p {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .drop-zone span {
+            display: block;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #A39184;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* 預設就顯示表格區塊 */
+        .table-container {
+            display: block; 
+            margin-top: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background-color: #FFFFFF;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #F9F6F0; /* 表頭使用淺米色 */
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #FDFCFB;
+        }
+
+        /* 調整狀態文字顏色，使其融入奶油風 */
+        .status-label { color: #7A9F5A; font-weight: 500; }
+        .status-warning { color: var(--warning-color); font-weight: 500; }
+        
+        .empty-state {
+            text-align: center;
+            color: #A39184;
+            padding: 2rem !important;
+            font-style: italic;
+        }
+
+        /* 預設就顯示按鈕區塊 */
+        .actions {
+            display: flex;
+            margin-top: 1.5rem;
+            text-align: right;
+            gap: 12px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        button {
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 8px; /* 圓潤按鈕 */
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary { background-color: var(--primary-color); }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        
+        .btn-excel { background-color: var(--success-color); }
+        .btn-excel:hover { background-color: var(--success-hover); }
+        
+        .btn-reset { background-color: var(--danger-color); }
+        .btn-reset:hover { background-color: var(--danger-hover); }
+
+        /* 當按鈕不可用時的狀態 */
+        button:disabled {
+            background-color: var(--border-color) !important;
+            color: #A39184 !important;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>批次圖片重新命名與統計工具</h1>
+        
+        <div class="drop-zone" id="drop-zone">
+            <p>點擊此處選擇圖片，或將圖片拖曳至此</p>
+            <span>（支援 .jpg, .png 等常見格式）</span>
+            <input type="file" id="file-input" multiple accept="image/*">
+        </div>
+
+        <div class="table-container" id="table-container">
+            <table id="preview-table">
+                <thead>
+                    <tr>
+                        <th>原始檔名</th>
+                        <th>新檔名</th>
+                        <th>狀態預覽</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr id="empty-row">
+                        <td colspan="3" class="empty-state">尚未上傳任何圖片，請從上方選擇或拖曳檔案</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="actions" id="actions-container">
+            <button id="reset-btn" class="btn-reset" disabled>🗑️ 重設清空</button>
+            <button id="download-excel-btn" class="btn-excel" disabled>📊 下載統計 Excel</button>
+            <button id="download-zip-btn" class="btn-primary" disabled>📦 確認並打包 ZIP</button>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const tbody = document.getElementById('table-body');
+        
+        const downloadZipBtn = document.getElementById('download-zip-btn');
+        const downloadExcelBtn = document.getElementById('download-excel-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        let processedFiles = []; 
+        let statsData = {};      
+
+        // 點擊與拖曳事件
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) processFiles(Array.from(e.dataTransfer.files));
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) processFiles(Array.from(e.target.files));
+        });
+
+        // 核心處理與統計邏輯
+        function processFiles(files) {
+            files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+            processedFiles = [];
+            statsData = {}; 
+            let currentLabel = "";
+            let currentCounter = 0;
+
+            tbody.innerHTML = ''; // 清空表格(包含空狀態提示)
+
+            files.forEach(file => {
+                const originalName = file.name;
+                let newName = "";
+                let statusHtml = "";
+                
+                const lastDotIndex = originalName.lastIndexOf(".");
+                const ext = lastDotIndex !== -1 ? originalName.slice(lastDotIndex) : "";
+                
+                const labelRegex = /_([^_]+?)\(1\)(?=\.[^.]+$)/i;
+                const match = originalName.match(labelRegex);
+
+                if (match) {
+                    currentLabel = match[1]; 
+                    currentCounter = 1;
+                    newName = `${currentLabel}(${currentCounter})${ext}`;
+                    statusHtml = `<span class="status-label">✅ 標籤圖更新: ${currentLabel}</span>`;
+                } else {
+                    if (currentLabel !== "") {
+                        currentCounter++;
+                        newName = `${currentLabel}(${currentCounter})${ext}`;
+                        statusHtml = `<span class="status-label">✓ 自動遞增</span>`;
+                    } else {
+                        newName = originalName;
+                        statusHtml = `<span class="status-warning">⚠️ 無所屬標籤，保持原名</span>`;
+                    }
+                }
+
+                if (currentLabel !== "") {
+                    statsData[currentLabel] = (statsData[currentLabel] || 0) + 1;
+                }
+
+                processedFiles.push({ file, newName });
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${originalName}</td>
+                    <td><strong>${newName}</strong></td>
+                    <td>${statusHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // 啟用按鈕
+            resetBtn.disabled = false;
+            downloadExcelBtn.disabled = false;
+            downloadZipBtn.disabled = false;
+        }
+
+        // 功能 1：重設清空
+        resetBtn.addEventListener('click', () => {
+            processedFiles = [];
+            statsData = {};
+            
+            // 恢復空狀態提示
+            tbody.innerHTML = `
+                <tr id="empty-row">
+                    <td colspan="3" class="empty-state">尚未上傳任何圖片，請從上方選擇或拖曳檔案</td>
+                </tr>
+            `;
+            
+            // 禁用按鈕
+            resetBtn.disabled = true;
+            downloadExcelBtn.disabled = true;
+            downloadZipBtn.disabled = true;
+            
+            fileInput.value = '';
+        });
+
+        // 功能 2：下載 Excel 統計表
+        downloadExcelBtn.addEventListener('click', () => {
+            if (Object.keys(statsData).length === 0) {
+                alert("目前沒有成功分類的統計資料！");
+                return;
+            }
+
+            const excelData = [];
+            let totalImages = 0;
+
+            for (const [place, count] of Object.entries(statsData)) {
+                excelData.push({ "Place": place, "Fire Damper": count });
+                totalImages += count;
+            }
+
+            excelData.push({ "Place": "", "Fire Damper": "" });
+            excelData.push({ "Place": "Total", "Fire Damper": totalImages });
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
+
+            XLSX.writeFile(workbook, "Summary_Report.xlsx");
+        });
+
+        // 功能 3：打包下載 ZIP
+        downloadZipBtn.addEventListener('click', async () => {
+            if (processedFiles.length === 0) return;
+
+            const originalText = downloadZipBtn.innerText;
+            downloadZipBtn.innerText = "打包中，請稍候...";
+            downloadZipBtn.disabled = true;
+            resetBtn.disabled = true;
+            downloadExcelBtn.disabled = true;
+
+            try {
+                const zip = new JSZip();
+                processedFiles.forEach(item => {
+                    zip.file(item.newName, item.file);
+                });
+                const content = await zip.generateAsync({ type: "blob" });
+                
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "Renamed_Images.zip";
+                document.body.appendChild(a);
+                a.click();
+                
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("ZIP 打包失敗:", error);
+                alert("打包過程發生錯誤，請查看 Console。");
+            } finally {
+                downloadZipBtn.innerText = originalText;
+                downloadZipBtn.disabled = false;
+                resetBtn.disabled = false;
+                downloadExcelBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
