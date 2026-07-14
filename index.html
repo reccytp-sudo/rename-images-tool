@@ -6,7 +6,8 @@
     <title>防火閘重新命名與統計</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 將原本的 xlsx 替換為支援樣式輸出的 xlsx-js-style -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
     <style>
         /* 奶油風色票 (Creamy Style) */
@@ -327,14 +328,22 @@
             let totalImages = 0;
 
             for (const [place, count] of Object.entries(statsData)) {
-                excelData.push({ "Place": place, "Fire Damper": count });
+                // 將標題改為 Location 與 Qty
+                excelData.push({ "Location": place, "Qty": count });
                 totalImages += count;
             }
 
-            excelData.push({ "Place": "", "Fire Damper": "" });
-            excelData.push({ "Place": "Total", "Fire Damper": totalImages });
+            // 將標題改為 Location 與 Qty
+            excelData.push({ "Location": "", "Qty": "" });
+            excelData.push({ "Location": "Total", "Qty": totalImages });
 
             const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+            // 為首行 (A1 與 B1) 設定底線樣式
+            const headerStyle = { font: { underline: true } };
+            worksheet["A1"].s = headerStyle;
+            worksheet["B1"].s = headerStyle;
+
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
 
