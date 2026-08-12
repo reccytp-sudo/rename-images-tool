@@ -201,7 +201,7 @@
         
         .btn-excel { background-color: var(--success-color); }
         .btn-excel:hover { background-color: var(--success-hover); }
-        
+
         .btn-reset { background-color: var(--danger-color); }
         .btn-reset:hover { background-color: var(--danger-hover); }
 
@@ -219,17 +219,11 @@
     <div class="container">
         <h1>防火閘重新命名與統計</h1>
         
-        <!-- 表單區塊 (無 Fire Damper 欄位) -->
+        <!-- 表單區塊 (僅保留 Project, Location, Date) -->
         <div class="form-grid">
             <div class="form-group"><label>Project:</label><input type="text" id="in-project" placeholder="輸入 Project..."></div>
             <div class="form-group"><label>Location:</label><input type="text" id="in-location" placeholder="輸入 Location..."></div>
             <div class="form-group"><label>Date:</label><input type="text" id="in-date" placeholder="輸入 Date..."></div>
-            <div class="form-group"><label>FSD Ref.:</label><input type="text" id="in-fsd" placeholder="輸入 FSD Ref..."></div>
-            <div class="form-group"><label>Our Ref.:</label><input type="text" id="in-our-ref" placeholder="輸入 Our Ref..."></div>
-            <div class="form-group"><label>Rev. No.:</label><input type="text" id="in-rev" placeholder="輸入 Rev. No..."></div>
-            <div class="form-group"><label>Inspected:</label><input type="text" id="in-inspected" placeholder="輸入 Inspected..."></div>
-            <div class="form-group"><label>Prepared By:</label><input type="text" id="in-prepared" placeholder="輸入 Prepared By..."></div>
-            <div class="form-group"><label>Reviewed By:</label><input type="text" id="in-reviewed" placeholder="輸入 Reviewed By..."></div>
         </div>
         
         <div class="drop-zone" id="drop-zone">
@@ -273,6 +267,8 @@
 
         let processedFiles = []; 
         let statsData = {};      
+
+        const val = (id) => document.getElementById(id).value || "";
 
         // 點擊與拖曳事件
         dropZone.addEventListener('click', () => fileInput.click());
@@ -357,7 +353,6 @@
                 </tr>
             `;
             
-            // 清空上方所有輸入欄位
             document.querySelectorAll('.form-grid input').forEach(input => {
                 input.value = '';
             });
@@ -369,215 +364,166 @@
             fileInput.value = '';
         });
 
-        // 功能 2：下載 1:1 Excel 模板
-        downloadExcelBtn.addEventListener('click', () => {
-            if (Object.keys(statsData).length === 0) {
-                alert("目前沒有成功分類的統計資料！");
-                return;
-            }
-
-            const workbook = XLSX.utils.book_new();
-            const val = (id) => document.getElementById(id).value || "";
-            const inspectedName = val('in-inspected');
-
-            // --- 預先計算主地點統計與總數 ---
+        // 預先計算統計邏輯
+        function calculateStats() {
             const baseStats = {};
             let totalQty = 0;
             
             for (const key of Object.keys(statsData)) {
-                // 將字尾的 `(數字)` 拔除以萃取主地點名稱
                 const baseLocation = key.replace(/\(\d+\)$/, '').trim();
-                // 每次出現一個帶有括號的分類，代表找到了一個該地點的閘門，次數 +1
                 baseStats[baseLocation] = (baseStats[baseLocation] || 0) + 1;
             }
 
-            // 計算所有主地點的數量總和
             for (const count of Object.values(baseStats)) {
                 totalQty += count;
             }
-            // -----------------------------
-
-            // 定義樣式
-            const centerAlign = { horizontal: "center", vertical: "center" };
-            const rightAlign = { horizontal: "right", vertical: "center" };
-            const borderAll = {
-                top: { style: "thin" },
-                bottom: { style: "thin" },
-                left: { style: "thin" },
-                right: { style: "thin" }
-            };
-            const borderBottom = { bottom: { style: "thin" } };
             
+            return { baseStats, totalQty };
+        }
+
+        // 功能 2：嚴格對齊最新 7 欄式設計的 Excel 下載
+        downloadExcelBtn.addEventListener('click', () => {
+            if (Object.keys(statsData).length === 0) return alert("目前沒有成功分類的統計資料！");
+
+            const workbook = XLSX.utils.book_new();
+            const { baseStats, totalQty } = calculateStats();
+
+            // 定義 Excel 樣式（嚴格控制置中、靠左與框線）
+            const centerAlign = { horizontal: "center", vertical: "center" };
+            const leftAlign = { horizontal: "left", vertical: "center" };
+            const rightAlign = { horizontal: "right", vertical: "center" };
+            const borderAll = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+            const borderBottom = { bottom: { style: "thin" } };
             const fontTitle = { name: "Arial", sz: 14, bold: true };
             const fontNormal = { name: "Arial", sz: 12 };
-            const fontBold = { name: "Arial", sz: 12, bold: true };
 
             const aoa = [];
             
-            // Row 1-3
-            aoa.push([{v: "FIRE DAMPERS INSPECTION", s: {font: fontTitle, alignment: centerAlign}}, "", "", "", "", "", "", "", ""]);
-            aoa.push([]);
-            aoa.push([]);
+            // 標題 Row 1-3 (Index 0~2)
+            aoa.push([{v: "Summary of Fire Dampers", s: {font: fontTitle, alignment: centerAlign}}, "", "", "", "", "", ""]);
+            aoa.push(["", "", "", "", "", "", ""]);
+            aoa.push(["", "", "", "", "", "", ""]);
             
-            // Row 4
+            // Row 4: Project
             aoa.push([
-                {v: "Project:", s: {font: fontNormal}}, // A
-                {v: val('in-project'), s: {font: fontNormal, border: borderBottom}}, // B
-                {v: "", s: {border: borderBottom}}, // C
-                {v: "", s: {border: borderBottom}}, // D
-                {v: "Date:", s: {font: fontNormal}}, // E
-                {v: val('in-date'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, // F
-                {v: "", s: {border: borderBottom}}, // G
-                {v: "", s: {border: borderBottom}}, // H
-                "" // I
-            ]);
-            // Row 5
-            aoa.push([
-                "", "", "", "",
-                {v: "FSD Ref.:", s: {font: fontNormal}}, // E
-                {v: val('in-fsd'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, // F
-                {v: "", s: {border: borderBottom}}, // G
-                {v: "", s: {border: borderBottom}}, // H
-                "" // I
-            ]);
-            // Row 6
-            aoa.push([
-                {v: "Location:", s: {font: fontNormal}}, // A
-                {v: val('in-location'), s: {font: fontNormal, border: borderBottom}}, // B
-                {v: "", s: {border: borderBottom}}, // C
-                {v: "", s: {border: borderBottom}}, // D
-                {v: "Our Ref.:", s: {font: fontNormal}}, // E
-                {v: val('in-our-ref'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, // F
-                {v: "", s: {border: borderBottom}}, // G
-                {v: "", s: {border: borderBottom}}, // H
-                "" // I
-            ]);
-            // Row 7
-            aoa.push([
-                "", "", "", "",
-                {v: "Rev. No.:", s: {font: fontNormal}}, // E
-                {v: val('in-rev'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, // F
-                {v: "", s: {border: borderBottom}}, // G
-                {v: "", s: {border: borderBottom}}, // H
-                "" // I
-            ]);
-            // Row 8 (自動填入計算好的地點總數 totalQty，只有 B 欄有底框線)
-            aoa.push([
-                {v: "Fire Damper:", s: {font: fontNormal}}, // A
-                {v: totalQty, s: {font: fontNormal, border: borderBottom}}, // B
-                "", // C
-                "", // D
-                "", "", "", "", "" // E-I
-            ]);
-            
-            // Row 9 (Page 1 of 1，"Page"與"of"無底線)
-            aoa.push([
-                "", "", "", "",
-                {v: "Page", s: {font: fontNormal}}, 
-                {v: 1, s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, 
-                {v: "of", s: {font: fontNormal, alignment: centerAlign}}, 
-                {v: 1, s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, 
-                ""
-            ]);
-            
-            // Row 10
-            aoa.push([
-                {v: "Inspected:", s: {font: fontNormal}}, 
-                {v: inspectedName, s: {font: fontNormal, border: borderBottom}}, 
+                {v: "Project:", s: {font: fontNormal, alignment: centerAlign}}, "", "", 
+                {v: val('in-project'), s: {font: fontNormal, alignment: leftAlign, border: borderBottom}}, 
                 {v: "", s: {border: borderBottom}}, 
                 {v: "", s: {border: borderBottom}}, 
-                "", "", "", "", ""
+                {v: "", s: {border: borderBottom}}
             ]);
-            // Row 11
-            aoa.push([]);
+            
+            // Row 5: 空白
+            aoa.push(["", "", "", "", "", "", ""]);
+            
+            // Row 6: Location
+            aoa.push([
+                {v: "Location:", s: {font: fontNormal, alignment: centerAlign}}, "", "", 
+                {v: val('in-location'), s: {font: fontNormal, alignment: leftAlign, border: borderBottom}}, 
+                {v: "", s: {border: borderBottom}}, 
+                {v: "", s: {border: borderBottom}}, 
+                {v: "", s: {border: borderBottom}}
+            ]);
+            
+            // Row 7: 空白
+            aoa.push(["", "", "", "", "", "", ""]);
+            
+            // Row 8: Fire Damper (總數) - 注意 D 欄為獨立格子含底線
+            aoa.push([
+                {v: "Fire Damper:", s: {font: fontNormal, alignment: centerAlign}}, "", "", 
+                {v: totalQty, s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, 
+                "", "", ""
+            ]);
+            
+            // Row 9: 空白
+            aoa.push(["", "", "", "", "", "", ""]);
+            
+            // Row 10: Inspection Date
+            aoa.push([
+                {v: "Inspection Date:", s: {font: fontNormal, alignment: centerAlign}}, "", "", 
+                {v: val('in-date'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, 
+                {v: "", s: {border: borderBottom}}, 
+                "", ""
+            ]);
+            
+            // Row 11-12: 空白
+            aoa.push(["", "", "", "", "", "", ""]);
+            aoa.push(["", "", "", "", "", "", ""]);
 
-            // Headers
+            // Headers Row 13 (完美配合 7 欄格式)
             const thStyle = { font: fontNormal, alignment: centerAlign, border: borderAll };
             aoa.push([
-                {v: "", s: thStyle}, 
-                {v: "Fire Damper", s: thStyle}, 
-                {v: "Clean Fire", s: thStyle}, 
-                {v: "Inspected", s: thStyle}
-            ]);
-            aoa.push([
-                {v: "Ref. No.", s: thStyle}, 
-                {v: "Ref.", s: thStyle}, 
-                {v: "Damper", s: thStyle}, 
-                {v: "by", s: thStyle}
+                {v: "Ref. No.", s: thStyle}, {v: "", s: thStyle},
+                {v: "Location", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle},
+                {v: "Qty", s: thStyle}
             ]);
 
-            // Data Rows (利用上面算好的 baseStats 輸出)
+            // Data Rows (資料置中對齊且全框線配合 A~G 欄合併)
             let rowIdx = 1;
             for (const [base, count] of Object.entries(baseStats)) {
                 aoa.push([
-                    {v: rowIdx, s: thStyle},
-                    {v: base, s: thStyle},
-                    {v: count, s: thStyle},
-                    {v: inspectedName, s: thStyle}
+                    {v: rowIdx, s: thStyle}, {v: "", s: thStyle},
+                    {v: base, s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle},
+                    {v: count, s: thStyle}
                 ]);
                 rowIdx++;
             }
 
-            // 在 Total 前加入一行帶有全框線的空白列
+            // Total 前的一行空框線
             aoa.push([
-                {v: "", s: {border: borderAll}},
-                {v: "", s: {border: borderAll}},
-                {v: "", s: {border: borderAll}},
-                {v: "", s: {border: borderAll}}
+                {v: "", s: thStyle}, {v: "", s: thStyle},
+                {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle},
+                {v: "", s: thStyle}
             ]);
 
-            // Total Row (A 到 D 都有全框線，且文字置中對齊)
+            // Total Row (A:B 合併空白, C:E 合併空白, F 是 "Total:", G 是數量)
             aoa.push([
-                {v: "", s: {border: borderAll}},
-                {v: "Total:", s: {font: fontNormal, alignment: centerAlign, border: borderAll}},
-                {v: totalQty, s: {font: fontNormal, alignment: centerAlign, border: borderAll}},
-                {v: "", s: {border: borderAll}}
-            ]);
-
-            // Blank spacing rows
-            aoa.push([]); aoa.push([]); aoa.push([]); aoa.push([]);
-
-            // Footer Row
-            const footerRowIdx = aoa.length;
-            aoa.push([
-                {v: "Prepared By:", s: {font: fontNormal}},
-                {v: val('in-prepared'), s: {font: fontNormal, border: borderBottom}},
-                {v: "", s: {border: borderBottom}},
-                {v: "Reviewed By:", s: {font: fontNormal}},
-                {v: val('in-reviewed'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}},
-                {v: "", s: {border: borderBottom}},
-                {v: "", s: {border: borderBottom}},
-                {v: "", s: {border: borderBottom}},
-                ""
+                {v: "", s: thStyle}, {v: "", s: thStyle},
+                {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle},
+                {v: "Total:", s: {font: fontNormal, alignment: rightAlign, border: borderAll}},
+                {v: totalQty, s: thStyle}
             ]);
 
             const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-            // 定義 Excel 中的所有合併儲存格 (Merges)
-            ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // A1:I1 標題
-                { s: { r: 3, c: 1 }, e: { r: 3, c: 3 } }, // B4:D4 (Project)
-                { s: { r: 3, c: 5 }, e: { r: 3, c: 7 } }, // F4:H4 (Date)
-                { s: { r: 4, c: 5 }, e: { r: 4, c: 7 } }, // F5:H5 (FSD Ref)
-                { s: { r: 5, c: 1 }, e: { r: 5, c: 3 } }, // B6:D6 (Location)
-                { s: { r: 5, c: 5 }, e: { r: 5, c: 7 } }, // F6:H6 (Our Ref)
-                { s: { r: 6, c: 5 }, e: { r: 6, c: 7 } }, // F7:H7 (Rev No)
-                { s: { r: 9, c: 1 }, e: { r: 9, c: 3 } }, // B10:D10 (Inspected)
-                { s: { r: footerRowIdx, c: 1 }, e: { r: footerRowIdx, c: 2 } }, // 頁尾: B:C (Prepared)
-                { s: { r: footerRowIdx, c: 4 }, e: { r: footerRowIdx, c: 7 } }, // 頁尾: E:H (Reviewed)
+            // 跨欄置中與合併儲存格設定 (嚴格遵照 7 欄式設計)
+            const merges = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // A1:G1 標題
+                { s: { r: 3, c: 0 }, e: { r: 3, c: 2 } }, // A4:C4 Project:
+                { s: { r: 3, c: 3 }, e: { r: 3, c: 6 } }, // D4:G4 Project Value
+                { s: { r: 5, c: 0 }, e: { r: 5, c: 2 } }, // A6:C6 Location:
+                { s: { r: 5, c: 3 }, e: { r: 5, c: 6 } }, // D6:G6 Location Value
+                { s: { r: 7, c: 0 }, e: { r: 7, c: 2 } }, // A8:C8 Fire Damper:
+                // D8 為獨立不合併的儲存格
+                { s: { r: 9, c: 0 }, e: { r: 9, c: 2 } }, // A10:C10 Inspection Date:
+                { s: { r: 9, c: 3 }, e: { r: 9, c: 4 } }, // D10:E10 Date Value
             ];
 
-            // 完美對應模板的每一欄寬度
+            // 處理表格內的合併 (Ref. No -> A:B, Location -> C:F, Qty -> G 獨立)
+            let startRow = 12; // Row 13 (index 12)
+            for(let i = 0; i < rowIdx + 2; i++){
+                merges.push({ s: { r: startRow + i, c: 0 }, e: { r: startRow + i, c: 1 } }); // A:B
+                
+                if (i < rowIdx + 1) { 
+                    // 一般資料列及空白列: C:F 合併
+                    merges.push({ s: { r: startRow + i, c: 2 }, e: { r: startRow + i, c: 5 } });
+                } else { 
+                    // Total 列: C:E 合併, F是"Total:"
+                    merges.push({ s: { r: startRow + i, c: 2 }, e: { r: startRow + i, c: 4 } });
+                }
+            }
+
+            ws['!merges'] = merges;
+
+            // 完美對應 7 欄式欄寬設定 (完全按照您 Excel 檔案的屬性)
             ws['!cols'] = [
-                { wch: 12 }, // A 
-                { wch: 18 }, // B
-                { wch: 14 }, // C 
-                { wch: 14 }, // D 
-                { wch: 6 },  // E
-                { wch: 6 },  // F
-                { wch: 4 },  // G
-                { wch: 8 },  // H
-                { wch: 6 }   // I
+                { wch: 6.4 },  // A
+                { wch: 6.4 },  // B
+                { wch: 8.4 },  // C
+                { wch: 12.4 }, // D
+                { wch: 12.6 }, // E
+                { wch: 14.8 }, // F
+                { wch: 19.0 }  // G
             ];
 
             XLSX.utils.book_append_sheet(workbook, ws, "Summary_Report");
@@ -591,8 +537,6 @@
             const originalText = downloadZipBtn.innerText;
             downloadZipBtn.innerText = "打包中，請稍候...";
             downloadZipBtn.disabled = true;
-            resetBtn.disabled = true;
-            downloadExcelBtn.disabled = true;
 
             try {
                 const zip = new JSZip();
@@ -616,8 +560,6 @@
             } finally {
                 downloadZipBtn.innerText = originalText;
                 downloadZipBtn.disabled = false;
-                resetBtn.disabled = false;
-                downloadExcelBtn.disabled = false;
             }
         });
     </script>
