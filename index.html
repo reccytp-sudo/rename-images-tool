@@ -47,9 +47,50 @@
         h1 {
             text-align: center;
             margin-top: 0;
+            margin-bottom: 2rem;
             color: var(--primary-color);
             font-weight: 600;
         }
+
+        /* ---------------- 資料輸入表單區塊 ---------------- */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background-color: #FDFCFB;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text-color);
+        }
+
+        .form-group input {
+            padding: 10px;
+            border: 1px solid #DCD3C6;
+            border-radius: 6px;
+            font-size: 1rem;
+            background-color: #FFFFFF;
+            color: var(--text-color);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary-color);
+        }
+        /* ------------------------------------------------ */
 
         .drop-zone {
             border: 2px dashed var(--primary-color);
@@ -178,6 +219,19 @@
     <div class="container">
         <h1>防火閘重新命名與統計</h1>
         
+        <!-- 表單區塊 (無 Fire Damper 欄位) -->
+        <div class="form-grid">
+            <div class="form-group"><label>Project:</label><input type="text" id="in-project" placeholder="輸入 Project..."></div>
+            <div class="form-group"><label>Location:</label><input type="text" id="in-location" placeholder="輸入 Location..."></div>
+            <div class="form-group"><label>Date:</label><input type="text" id="in-date" placeholder="輸入 Date..."></div>
+            <div class="form-group"><label>FSD Ref.:</label><input type="text" id="in-fsd" placeholder="輸入 FSD Ref..."></div>
+            <div class="form-group"><label>Our Ref.:</label><input type="text" id="in-our-ref" placeholder="輸入 Our Ref..."></div>
+            <div class="form-group"><label>Rev. No.:</label><input type="text" id="in-rev" placeholder="輸入 Rev. No..."></div>
+            <div class="form-group"><label>Inspected:</label><input type="text" id="in-inspected" placeholder="輸入 Inspected..."></div>
+            <div class="form-group"><label>Prepared By:</label><input type="text" id="in-prepared" placeholder="輸入 Prepared By..."></div>
+            <div class="form-group"><label>Reviewed By:</label><input type="text" id="in-reviewed" placeholder="輸入 Reviewed By..."></div>
+        </div>
+        
         <div class="drop-zone" id="drop-zone">
             <p>點擊此處選擇圖片，或將圖片拖曳至此</p>
             <span>（支援 .jpg, .png 等常見格式）</span>
@@ -272,6 +326,7 @@
                 }
 
                 if (currentLabel !== "") {
+                    // statsData 記錄的是每一個附帶括號的標籤（例如 "巴士站(1)"）
                     statsData[currentLabel] = (statsData[currentLabel] || 0) + 1;
                 }
 
@@ -302,6 +357,11 @@
                 </tr>
             `;
             
+            // 清空上方所有輸入欄位
+            document.querySelectorAll('.form-grid input').forEach(input => {
+                input.value = '';
+            });
+            
             resetBtn.disabled = true;
             downloadExcelBtn.disabled = true;
             downloadZipBtn.disabled = true;
@@ -309,7 +369,7 @@
             fileInput.value = '';
         });
 
-        // 功能 2：下載 Excel 統計表 (包含兩個分頁)
+        // 功能 2：下載 1:1 Excel 模板
         downloadExcelBtn.addEventListener('click', () => {
             if (Object.keys(statsData).length === 0) {
                 alert("目前沒有成功分類的統計資料！");
@@ -317,51 +377,210 @@
             }
 
             const workbook = XLSX.utils.book_new();
-            const headerStyle = { font: { underline: true } };
+            const val = (id) => document.getElementById(id).value || "";
+            const inspectedName = val('in-inspected');
 
-            // === 頁面 1：詳細項目統計表 (Summary) ===
-            const excelData1 = [];
-            let totalImages = 0;
-
-            for (const [place, count] of Object.entries(statsData)) {
-                excelData1.push({ "Location": place, "Qty": count });
-                totalImages += count;
-            }
-
-            excelData1.push({ "Location": "", "Qty": "" });
-            excelData1.push({ "Location": "Total", "Qty": totalImages });
-
-            const worksheet1 = XLSX.utils.json_to_sheet(excelData1);
-            worksheet1["A1"].s = headerStyle;
-            worksheet1["B1"].s = headerStyle;
-            XLSX.utils.book_append_sheet(workbook, worksheet1, "Summary");
-
-            // === 頁面 2：主地點數量統計表 (Location_Count) ===
+            // --- 預先計算主地點統計與總數 ---
             const baseStats = {};
+            let totalQty = 0;
             
             for (const key of Object.keys(statsData)) {
-                // 將字尾的 `(數字)` 拔除以萃取主地點，這能完美滿足你的需求！
+                // 將字尾的 `(數字)` 拔除以萃取主地點名稱
                 const baseLocation = key.replace(/\(\d+\)$/, '').trim();
+                // 每次出現一個帶有括號的分類，代表找到了一個該地點的閘門，次數 +1
                 baseStats[baseLocation] = (baseStats[baseLocation] || 0) + 1;
             }
 
-            const excelData2 = [];
-            let totalBaseCount = 0;
+            // 計算所有主地點的數量總和
+            for (const count of Object.values(baseStats)) {
+                totalQty += count;
+            }
+            // -----------------------------
 
+            // 定義樣式
+            const centerAlign = { horizontal: "center", vertical: "center" };
+            const rightAlign = { horizontal: "right", vertical: "center" };
+            const borderAll = {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+            };
+            const borderBottom = { bottom: { style: "thin" } };
+            
+            const fontTitle = { name: "Arial", sz: 14, bold: true };
+            const fontNormal = { name: "Arial", sz: 12 };
+            const fontBold = { name: "Arial", sz: 12, bold: true };
+
+            const aoa = [];
+            
+            // Row 1-3
+            aoa.push([{v: "FIRE DAMPERS INSPECTION", s: {font: fontTitle, alignment: centerAlign}}, "", "", "", "", "", "", "", ""]);
+            aoa.push([]);
+            aoa.push([]);
+            
+            // Row 4
+            aoa.push([
+                {v: "Project:", s: {font: fontNormal}}, // A
+                {v: val('in-project'), s: {font: fontNormal, border: borderBottom}}, // B
+                {v: "", s: {border: borderBottom}}, // C
+                {v: "", s: {border: borderBottom}}, // D
+                {v: "Date:", s: {font: fontNormal}}, // E
+                {v: val('in-date'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, // F
+                {v: "", s: {border: borderBottom}}, // G
+                {v: "", s: {border: borderBottom}}, // H
+                "" // I
+            ]);
+            // Row 5
+            aoa.push([
+                "", "", "", "",
+                {v: "FSD Ref.:", s: {font: fontNormal}}, // E
+                {v: val('in-fsd'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, // F
+                {v: "", s: {border: borderBottom}}, // G
+                {v: "", s: {border: borderBottom}}, // H
+                "" // I
+            ]);
+            // Row 6
+            aoa.push([
+                {v: "Location:", s: {font: fontNormal}}, // A
+                {v: val('in-location'), s: {font: fontNormal, border: borderBottom}}, // B
+                {v: "", s: {border: borderBottom}}, // C
+                {v: "", s: {border: borderBottom}}, // D
+                {v: "Our Ref.:", s: {font: fontNormal}}, // E
+                {v: val('in-our-ref'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, // F
+                {v: "", s: {border: borderBottom}}, // G
+                {v: "", s: {border: borderBottom}}, // H
+                "" // I
+            ]);
+            // Row 7
+            aoa.push([
+                "", "", "", "",
+                {v: "Rev. No.:", s: {font: fontNormal}}, // E
+                {v: val('in-rev'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, // F
+                {v: "", s: {border: borderBottom}}, // G
+                {v: "", s: {border: borderBottom}}, // H
+                "" // I
+            ]);
+            // Row 8 (自動填入計算好的地點總數 totalQty，只有 B 欄有底框線)
+            aoa.push([
+                {v: "Fire Damper:", s: {font: fontNormal}}, // A
+                {v: totalQty, s: {font: fontNormal, border: borderBottom}}, // B
+                "", // C
+                "", // D
+                "", "", "", "", "" // E-I
+            ]);
+            
+            // Row 9 (Page 1 of 1，"Page"與"of"無底線)
+            aoa.push([
+                "", "", "", "",
+                {v: "Page", s: {font: fontNormal}}, 
+                {v: 1, s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, 
+                {v: "of", s: {font: fontNormal, alignment: centerAlign}}, 
+                {v: 1, s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, 
+                ""
+            ]);
+            
+            // Row 10
+            aoa.push([
+                {v: "Inspected:", s: {font: fontNormal}}, 
+                {v: inspectedName, s: {font: fontNormal, border: borderBottom}}, 
+                {v: "", s: {border: borderBottom}}, 
+                {v: "", s: {border: borderBottom}}, 
+                "", "", "", "", ""
+            ]);
+            // Row 11
+            aoa.push([]);
+
+            // Headers
+            const thStyle = { font: fontNormal, alignment: centerAlign, border: borderAll };
+            aoa.push([
+                {v: "", s: thStyle}, 
+                {v: "Fire Damper", s: thStyle}, 
+                {v: "Clean Fire", s: thStyle}, 
+                {v: "Inspected", s: thStyle}
+            ]);
+            aoa.push([
+                {v: "Ref. No.", s: thStyle}, 
+                {v: "Ref.", s: thStyle}, 
+                {v: "Damper", s: thStyle}, 
+                {v: "by", s: thStyle}
+            ]);
+
+            // Data Rows (利用上面算好的 baseStats 輸出)
+            let rowIdx = 1;
             for (const [base, count] of Object.entries(baseStats)) {
-                excelData2.push({ "Location": base, "Qty": count });
-                totalBaseCount += count;
+                aoa.push([
+                    {v: rowIdx, s: thStyle},
+                    {v: base, s: thStyle},
+                    {v: count, s: thStyle},
+                    {v: inspectedName, s: thStyle}
+                ]);
+                rowIdx++;
             }
 
-            excelData2.push({ "Location": "", "Qty": "" });
-            excelData2.push({ "Location": "Total", "Qty": totalBaseCount });
+            // 在 Total 前加入一行帶有全框線的空白列
+            aoa.push([
+                {v: "", s: {border: borderAll}},
+                {v: "", s: {border: borderAll}},
+                {v: "", s: {border: borderAll}},
+                {v: "", s: {border: borderAll}}
+            ]);
 
-            const worksheet2 = XLSX.utils.json_to_sheet(excelData2);
-            worksheet2["A1"].s = headerStyle;
-            worksheet2["B1"].s = headerStyle;
-            XLSX.utils.book_append_sheet(workbook, worksheet2, "Location_Count");
+            // Total Row (A 到 D 都有全框線，且文字置中對齊)
+            aoa.push([
+                {v: "", s: {border: borderAll}},
+                {v: "Total:", s: {font: fontNormal, alignment: centerAlign, border: borderAll}},
+                {v: totalQty, s: {font: fontNormal, alignment: centerAlign, border: borderAll}},
+                {v: "", s: {border: borderAll}}
+            ]);
 
-            // === 匯出 Excel ===
+            // Blank spacing rows
+            aoa.push([]); aoa.push([]); aoa.push([]); aoa.push([]);
+
+            // Footer Row
+            const footerRowIdx = aoa.length;
+            aoa.push([
+                {v: "Prepared By:", s: {font: fontNormal}},
+                {v: val('in-prepared'), s: {font: fontNormal, border: borderBottom}},
+                {v: "", s: {border: borderBottom}},
+                {v: "Reviewed By:", s: {font: fontNormal}},
+                {v: val('in-reviewed'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}},
+                {v: "", s: {border: borderBottom}},
+                {v: "", s: {border: borderBottom}},
+                {v: "", s: {border: borderBottom}},
+                ""
+            ]);
+
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+            // 定義 Excel 中的所有合併儲存格 (Merges)
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // A1:I1 標題
+                { s: { r: 3, c: 1 }, e: { r: 3, c: 3 } }, // B4:D4 (Project)
+                { s: { r: 3, c: 5 }, e: { r: 3, c: 7 } }, // F4:H4 (Date)
+                { s: { r: 4, c: 5 }, e: { r: 4, c: 7 } }, // F5:H5 (FSD Ref)
+                { s: { r: 5, c: 1 }, e: { r: 5, c: 3 } }, // B6:D6 (Location)
+                { s: { r: 5, c: 5 }, e: { r: 5, c: 7 } }, // F6:H6 (Our Ref)
+                { s: { r: 6, c: 5 }, e: { r: 6, c: 7 } }, // F7:H7 (Rev No)
+                { s: { r: 9, c: 1 }, e: { r: 9, c: 3 } }, // B10:D10 (Inspected)
+                { s: { r: footerRowIdx, c: 1 }, e: { r: footerRowIdx, c: 2 } }, // 頁尾: B:C (Prepared)
+                { s: { r: footerRowIdx, c: 4 }, e: { r: footerRowIdx, c: 7 } }, // 頁尾: E:H (Reviewed)
+            ];
+
+            // 完美對應模板的每一欄寬度
+            ws['!cols'] = [
+                { wch: 12 }, // A 
+                { wch: 18 }, // B
+                { wch: 14 }, // C 
+                { wch: 14 }, // D 
+                { wch: 6 },  // E
+                { wch: 6 },  // F
+                { wch: 4 },  // G
+                { wch: 8 },  // H
+                { wch: 6 }   // I
+            ];
+
+            XLSX.utils.book_append_sheet(workbook, ws, "Summary_Report");
             XLSX.writeFile(workbook, "Summary_Report.xlsx");
         });
 
