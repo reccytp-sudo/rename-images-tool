@@ -6,22 +6,21 @@
     <title>防火閘重新命名與統計</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- 將原本的 xlsx 替換為支援樣式輸出的 xlsx-js-style -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
     <style>
         /* 奶油風色票 (Creamy Style) */
         :root {
-            --primary-color: #D4A373; /* 焦糖/奶茶主色 */
-            --primary-hover: #C38D59; /* 較深的奶茶色 */
-            --success-color: #8CB369; /* 莫蘭迪綠 (Excel按鈕) */
+            --primary-color: #D4A373;
+            --primary-hover: #C38D59;
+            --success-color: #8CB369;
             --success-hover: #7A9F5A; 
-            --danger-color: #E29578;  /* 柔和陶土粉 (重設按鈕) */
+            --danger-color: #E29578;
             --danger-hover: #CF7E60;
-            --bg-color: #FAF8F5;      /* 奶油暖白背景 */
-            --text-color: #5C4D43;    /* 暖深棕色文字 (取代死白與純黑) */
-            --border-color: #EAE0D5;  /* 淺米色邊框 */
-            --warning-color: #F4A261; /* 暖橘色 (警告標示) */
+            --bg-color: #FAF8F5;
+            --text-color: #5C4D43;
+            --border-color: #EAE0D5;
+            --warning-color: #F4A261;
         }
 
         body {
@@ -39,8 +38,8 @@
             width: 100%;
             max-width: 900px;
             background: #FFFFFF;
-            border-radius: 16px; /* 更圓潤的邊角 */
-            box-shadow: 0 8px 30px rgba(92, 77, 67, 0.08); /* 柔和的暖色陰影 */
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(92, 77, 67, 0.08);
             padding: 2rem;
             box-sizing: border-box;
         }
@@ -59,12 +58,12 @@
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            background-color: #FDFCFB; /* 極淡的奶油色 */
+            background-color: #FDFCFB;
             margin-bottom: 2rem;
         }
 
         .drop-zone.dragover {
-            background-color: #F5EBE1; /* 拖曳時加深的奶茶底色 */
+            background-color: #F5EBE1;
             border-color: var(--primary-hover);
             transform: scale(1.01);
         }
@@ -87,7 +86,6 @@
             display: none;
         }
 
-        /* 預設就顯示表格區塊 */
         .table-container {
             display: block; 
             margin-top: 1rem;
@@ -110,7 +108,7 @@
         }
 
         th {
-            background-color: #F9F6F0; /* 表頭使用淺米色 */
+            background-color: #F9F6F0;
             position: sticky;
             top: 0;
             z-index: 10;
@@ -122,7 +120,6 @@
             background-color: #FDFCFB;
         }
 
-        /* 調整狀態文字顏色，使其融入奶油風 */
         .status-label { color: #7A9F5A; font-weight: 500; }
         .status-warning { color: var(--warning-color); font-weight: 500; }
         
@@ -133,7 +130,6 @@
             font-style: italic;
         }
 
-        /* 預設就顯示按鈕區塊 */
         .actions {
             display: flex;
             margin-top: 1.5rem;
@@ -148,7 +144,7 @@
             border: none;
             padding: 12px 24px;
             font-size: 1rem;
-            border-radius: 8px; /* 圓潤按鈕 */
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
             font-weight: 600;
@@ -168,7 +164,6 @@
         .btn-reset { background-color: var(--danger-color); }
         .btn-reset:hover { background-color: var(--danger-hover); }
 
-        /* 當按鈕不可用時的狀態 */
         button:disabled {
             background-color: var(--border-color) !important;
             color: #A39184 !important;
@@ -247,7 +242,7 @@
             let currentLabel = "";
             let currentCounter = 0;
 
-            tbody.innerHTML = ''; // 清空表格(包含空狀態提示)
+            tbody.innerHTML = ''; 
 
             files.forEach(file => {
                 const originalName = file.name;
@@ -291,7 +286,6 @@
                 tbody.appendChild(tr);
             });
 
-            // 啟用按鈕
             resetBtn.disabled = false;
             downloadExcelBtn.disabled = false;
             downloadZipBtn.disabled = false;
@@ -302,14 +296,12 @@
             processedFiles = [];
             statsData = {};
             
-            // 恢復空狀態提示
             tbody.innerHTML = `
                 <tr id="empty-row">
                     <td colspan="3" class="empty-state">尚未上傳任何圖片，請從上方選擇或拖曳檔案</td>
                 </tr>
             `;
             
-            // 禁用按鈕
             resetBtn.disabled = true;
             downloadExcelBtn.disabled = true;
             downloadZipBtn.disabled = true;
@@ -317,36 +309,59 @@
             fileInput.value = '';
         });
 
-        // 功能 2：下載 Excel 統計表
+        // 功能 2：下載 Excel 統計表 (包含兩個分頁)
         downloadExcelBtn.addEventListener('click', () => {
             if (Object.keys(statsData).length === 0) {
                 alert("目前沒有成功分類的統計資料！");
                 return;
             }
 
-            const excelData = [];
+            const workbook = XLSX.utils.book_new();
+            const headerStyle = { font: { underline: true } };
+
+            // === 頁面 1：詳細項目統計表 (Summary) ===
+            const excelData1 = [];
             let totalImages = 0;
 
             for (const [place, count] of Object.entries(statsData)) {
-                // 將標題改為 Location 與 Qty
-                excelData.push({ "Location": place, "Qty": count });
+                excelData1.push({ "Location": place, "Qty": count });
                 totalImages += count;
             }
 
-            // 將標題改為 Location 與 Qty
-            excelData.push({ "Location": "", "Qty": "" });
-            excelData.push({ "Location": "Total", "Qty": totalImages });
+            excelData1.push({ "Location": "", "Qty": "" });
+            excelData1.push({ "Location": "Total", "Qty": totalImages });
 
-            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const worksheet1 = XLSX.utils.json_to_sheet(excelData1);
+            worksheet1["A1"].s = headerStyle;
+            worksheet1["B1"].s = headerStyle;
+            XLSX.utils.book_append_sheet(workbook, worksheet1, "Summary");
 
-            // 為首行 (A1 與 B1) 設定底線樣式
-            const headerStyle = { font: { underline: true } };
-            worksheet["A1"].s = headerStyle;
-            worksheet["B1"].s = headerStyle;
+            // === 頁面 2：主地點數量統計表 (Location_Count) ===
+            const baseStats = {};
+            
+            for (const key of Object.keys(statsData)) {
+                // 將字尾的 `(數字)` 拔除以萃取主地點，這能完美滿足你的需求！
+                const baseLocation = key.replace(/\(\d+\)$/, '').trim();
+                baseStats[baseLocation] = (baseStats[baseLocation] || 0) + 1;
+            }
 
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
+            const excelData2 = [];
+            let totalBaseCount = 0;
 
+            for (const [base, count] of Object.entries(baseStats)) {
+                excelData2.push({ "Location": base, "Qty": count });
+                totalBaseCount += count;
+            }
+
+            excelData2.push({ "Location": "", "Qty": "" });
+            excelData2.push({ "Location": "Total", "Qty": totalBaseCount });
+
+            const worksheet2 = XLSX.utils.json_to_sheet(excelData2);
+            worksheet2["A1"].s = headerStyle;
+            worksheet2["B1"].s = headerStyle;
+            XLSX.utils.book_append_sheet(workbook, worksheet2, "Location_Count");
+
+            // === 匯出 Excel ===
             XLSX.writeFile(workbook, "Summary_Report.xlsx");
         });
 
