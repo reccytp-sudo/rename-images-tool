@@ -21,6 +21,7 @@
             --text-color: #5C4D43;
             --border-color: #EAE0D5;
             --warning-color: #F4A261;
+            --ai-color: #8E44AD; /* AI 專屬紫色 */
         }
 
         body {
@@ -67,6 +68,13 @@
         .form-group {
             display: flex;
             flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+            border-bottom: 1px dashed #DCD3C6;
+            padding-bottom: 15px;
+            margin-bottom: 5px;
         }
 
         .form-group label {
@@ -163,6 +171,7 @@
 
         .status-label { color: #7A9F5A; font-weight: 500; }
         .status-warning { color: var(--warning-color); font-weight: 500; }
+        .status-ai { color: var(--ai-color); font-weight: 600; } /* AI 專屬紫色 */
         
         .empty-state {
             text-align: center;
@@ -198,10 +207,8 @@
 
         .btn-primary { background-color: var(--primary-color); }
         .btn-primary:hover { background-color: var(--primary-hover); }
-        
         .btn-excel { background-color: var(--success-color); }
         .btn-excel:hover { background-color: var(--success-hover); }
-
         .btn-reset { background-color: var(--danger-color); }
         .btn-reset:hover { background-color: var(--danger-hover); }
 
@@ -219,8 +226,14 @@
     <div class="container">
         <h1>防火閘重新命名與統計</h1>
         
-        <!-- 表單區塊 (僅保留 Project, Location, Date) -->
+        <!-- 表單區塊 -->
         <div class="form-grid">
+            <!-- 新增 API Key 輸入欄位 -->
+            <div class="form-group full-width">
+                <label>🔑 Gemini API Key (選填：填入即可啟用 AI 識別手寫貼紙)：</label>
+                <input type="password" id="api-key" placeholder="輸入 API Key (若在香港需開 VPN 或使用 Proxy)...">
+            </div>
+            
             <div class="form-group"><label>Project:</label><input type="text" id="in-project" placeholder="輸入 Project..."></div>
             <div class="form-group"><label>Location:</label><input type="text" id="in-location" placeholder="輸入 Location..."></div>
             <div class="form-group"><label>Date:</label><input type="text" id="in-date" placeholder="輸入 Date..."></div>
@@ -260,6 +273,7 @@
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const tbody = document.getElementById('table-body');
+        const tableContainer = document.getElementById('table-container');
         
         const downloadZipBtn = document.getElementById('download-zip-btn');
         const downloadExcelBtn = document.getElementById('download-excel-btn');
@@ -269,6 +283,14 @@
         let statsData = {};      
 
         const val = (id) => document.getElementById(id).value || "";
+
+        // 將圖片轉換為 Base64 (供 Gemini API 使用)
+        const getBase64 = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = error => reject(error);
+        });
 
         // 點擊與拖曳事件
         dropZone.addEventListener('click', () => fileInput.click());
@@ -283,41 +305,106 @@
             if (e.target.files.length > 0) processFiles(Array.from(e.target.files));
         });
 
-        // 核心處理與統計邏輯
-        function processFiles(files) {
+        // 核心處理與 AI 識別邏輯
+        async function processFiles(files) {
             files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+            // 鎖定介面防呆
+            dropZone.style.pointerEvents = 'none';
+            resetBtn.disabled = true;
+            downloadExcelBtn.disabled = true;
+            downloadZipBtn.disabled = true;
 
             processedFiles = [];
             statsData = {}; 
             let currentLabel = "";
             let currentCounter = 0;
+            const apiKey = document.getElementById('api-key').value.trim();
 
             tbody.innerHTML = ''; 
 
-            files.forEach(file => {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
                 const originalName = file.name;
+                const ext = originalName.slice(originalName.lastIndexOf("."));
+                
+                // 動態產生這列的 HTML
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${originalName}</td>
+                    <td style="color:#aaa;">${apiKey ? 'AI 識別中...' : '處理中...'}</td>
+                    <td style="color:#aaa;">⏳ 處理中</td>
+                `;
+                tbody.appendChild(tr);
+                tableContainer.scrollTop = tableContainer.scrollHeight;
+
+                let foundLabel = null;
+
+                // 如果有填寫 API Key，呼叫 Gemini Vision
+                if (apiKey) {
+                    try {
+                        const base64Data = await getBase64(file);
+                        
+                        // 備註：若你有架設之前提過的 Cloudflare Proxy，可將下方網址替換掉
+                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                        
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [
+                                        { text: "請精準讀取圖片中「防火閘編號：」右側的藍色手寫字。請嚴格只回傳該手寫字（例如：巴士站(4)、Chiller room、油缸房(2)），請將全形括號轉換為半形括號，不要加任何引號、不要換行或說明。如果看不到明顯的編號，請回傳 'NONE'。" },
+                                        { inline_data: { mime_type: file.type, data: base64Data } }
+                                    ]
+                                }]
+                            })
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                                let extracted = data.candidates[0].content.parts[0].text.trim();
+                                if (extracted !== 'NONE' && extracted.length > 0) {
+                                    // 確保抓到的字沒有奇怪的全形括號或換行
+                                    foundLabel = extracted.replace(/[（［]/g, '(').replace(/[）］]/g, ')').replace(/\n/g, '');
+                                }
+                            }
+                        } else {
+                            console.warn("AI 識別發生錯誤，可能 API Key 錯誤或網路受限。");
+                        }
+                    } catch (e) {
+                        console.error("AI 識別失敗:", originalName, e);
+                    }
+                }
+
                 let newName = "";
                 let statusHtml = "";
-                
-                const lastDotIndex = originalName.lastIndexOf(".");
-                const ext = lastDotIndex !== -1 ? originalName.slice(lastDotIndex) : "";
-                
-                const labelRegex = /_([^_]+?)\(1\)(?=\.[^.]+$)/i;
-                const match = originalName.match(labelRegex);
 
-                if (match) {
-                    currentLabel = match[1]; 
+                // 邏輯判定：優先使用 AI 識別結果；若無貼紙或沒設 API Key，則使用原本的正則邏輯
+                if (foundLabel) {
+                    currentLabel = foundLabel; 
                     currentCounter = 1;
                     newName = `${currentLabel}(${currentCounter})${ext}`;
-                    statusHtml = `<span class="status-label">✅ 標籤圖更新: ${currentLabel}</span>`;
+                    statusHtml = `<span class="status-ai">✨ AI 讀取貼紙: ${currentLabel}</span>`;
                 } else {
-                    if (currentLabel !== "") {
-                        currentCounter++;
+                    const labelRegex = /_([^_]+?)\(1\)(?=\.[^.]+$)/i;
+                    const match = originalName.match(labelRegex);
+
+                    if (match) {
+                        currentLabel = match[1]; 
+                        currentCounter = 1;
                         newName = `${currentLabel}(${currentCounter})${ext}`;
-                        statusHtml = `<span class="status-label">✓ 自動遞增</span>`;
+                        statusHtml = `<span class="status-label">✅ 檔名標籤更新: ${currentLabel}</span>`;
                     } else {
-                        newName = originalName;
-                        statusHtml = `<span class="status-warning">⚠️ 無所屬標籤，保持原名</span>`;
+                        if (currentLabel !== "") {
+                            currentCounter++;
+                            newName = `${currentLabel}(${currentCounter})${ext}`;
+                            statusHtml = `<span class="status-label">✓ 自動遞增</span>`;
+                        } else {
+                            newName = originalName;
+                            statusHtml = `<span class="status-warning">⚠️ 無貼紙也無標籤，保持原名</span>`;
+                        }
                     }
                 }
 
@@ -328,15 +415,16 @@
 
                 processedFiles.push({ file, newName });
 
-                const tr = document.createElement('tr');
+                // 更新該列畫面
                 tr.innerHTML = `
                     <td>${originalName}</td>
                     <td><strong>${newName}</strong></td>
                     <td>${statusHtml}</td>
                 `;
-                tbody.appendChild(tr);
-            });
+            }
 
+            // 解鎖介面
+            dropZone.style.pointerEvents = 'auto';
             resetBtn.disabled = false;
             downloadExcelBtn.disabled = false;
             downloadZipBtn.disabled = false;
@@ -353,9 +441,10 @@
                 </tr>
             `;
             
-            document.querySelectorAll('.form-grid input').forEach(input => {
-                input.value = '';
-            });
+            // 這裡不清空 API Key 以方便連續操作，只清空其他輸入欄位
+            document.getElementById('in-project').value = '';
+            document.getElementById('in-location').value = '';
+            document.getElementById('in-date').value = '';
             
             resetBtn.disabled = true;
             downloadExcelBtn.disabled = true;
