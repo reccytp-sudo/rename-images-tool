@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
     <style>
-        /* 奶油風色票 (Creamy Style) */
+        /* 奶油風色票 */
         :root {
             --primary-color: #D4A373;
             --primary-hover: #C38D59;
@@ -21,7 +21,7 @@
             --text-color: #5C4D43;
             --border-color: #EAE0D5;
             --warning-color: #F4A261;
-            --ai-color: #8E44AD; /* AI 專屬紫色 */
+            --ai-color: #8E44AD; 
         }
 
         body {
@@ -53,7 +53,6 @@
             font-weight: 600;
         }
 
-        /* ---------------- 資料輸入表單區塊 ---------------- */
         .form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -65,16 +64,21 @@
             border-radius: 12px;
         }
 
+        .ai-section {
+            grid-column: 1 / -1;
+            background-color: #F9F0FF;
+            border: 1px dashed var(--ai-color);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
         .form-group {
             display: flex;
             flex-direction: column;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
-            border-bottom: 1px dashed #DCD3C6;
-            padding-bottom: 15px;
-            margin-bottom: 5px;
         }
 
         .form-group label {
@@ -98,7 +102,6 @@
         .form-group input:focus {
             border-color: var(--primary-color);
         }
-        /* ------------------------------------------------ */
 
         .drop-zone {
             border: 2px dashed var(--primary-color);
@@ -131,9 +134,7 @@
             color: #A39184;
         }
 
-        #file-input {
-            display: none;
-        }
+        #file-input { display: none; }
 
         .table-container {
             display: block; 
@@ -165,13 +166,11 @@
             font-weight: 600;
         }
 
-        tr:hover {
-            background-color: #FDFCFB;
-        }
+        tr:hover { background-color: #FDFCFB; }
 
         .status-label { color: #7A9F5A; font-weight: 500; }
-        .status-warning { color: var(--warning-color); font-weight: 500; }
-        .status-ai { color: var(--ai-color); font-weight: 600; } /* AI 專屬紫色 */
+        .status-warning { color: var(--danger-color); font-weight: 500; }
+        .status-ai { color: var(--ai-color); font-weight: 600; }
         
         .empty-state {
             text-align: center;
@@ -201,10 +200,7 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
 
-        button:active {
-            transform: translateY(1px);
-        }
-
+        button:active { transform: translateY(1px); }
         .btn-primary { background-color: var(--primary-color); }
         .btn-primary:hover { background-color: var(--primary-hover); }
         .btn-excel { background-color: var(--success-color); }
@@ -226,17 +222,33 @@
     <div class="container">
         <h1>防火閘重新命名與統計</h1>
         
-        <!-- 表單區塊 -->
         <div class="form-grid">
-            <!-- 新增 API Key 輸入欄位 -->
-            <div class="form-group full-width">
-                <label>🔑 Gemini API Key (選填：填入即可啟用 AI 識別手寫貼紙)：</label>
-                <input type="password" id="api-key" placeholder="輸入 API Key (若在香港需開 VPN 或使用 Proxy)...">
+            <!-- AI 專屬設定區塊 -->
+            <div class="ai-section">
+                <div class="form-group">
+                    <label>🔑 Gemini API Key：</label>
+                    <input type="password" id="api-key" placeholder="輸入 AIzaSy...">
+                </div>
+                <div class="form-group">
+                    <label>🌐 Vercel/Cloudflare Proxy 網址：</label>
+                    <input type="text" id="api-proxy" placeholder="https://你的專案.vercel.app/api">
+                </div>
+                <div style="grid-column: 1 / -1; font-size: 0.85rem; color: var(--ai-color);">
+                    💡 提示：填寫上方兩欄後，拖曳圖片將自動啟動 AI 辨識手寫字。
+                </div>
             </div>
             
-            <div class="form-group"><label>Project:</label><input type="text" id="in-project" placeholder="輸入 Project..."></div>
-            <div class="form-group"><label>Location:</label><input type="text" id="in-location" placeholder="輸入 Location..."></div>
-            <div class="form-group"><label>Date:</label><input type="text" id="in-date" placeholder="輸入 Date..."></div>
+            <!-- Excel 報告欄位 -->
+            <div class="form-group"><label>Project:</label><input type="text" id="in-project" placeholder="..."></div>
+            <div class="form-group"><label>Location:</label><input type="text" id="in-location" placeholder="..."></div>
+            <div class="form-group"><label>Fire Damper:</label><input type="text" id="in-damper" placeholder="..."></div>
+            <div class="form-group"><label>Date:</label><input type="text" id="in-date" placeholder="..."></div>
+            <div class="form-group"><label>FSD Ref.:</label><input type="text" id="in-fsd" placeholder="..."></div>
+            <div class="form-group"><label>Our Ref.:</label><input type="text" id="in-our-ref" placeholder="..."></div>
+            <div class="form-group"><label>Rev. No.:</label><input type="text" id="in-rev" placeholder="..."></div>
+            <div class="form-group"><label>Inspected:</label><input type="text" id="in-inspected" placeholder="..."></div>
+            <div class="form-group"><label>Prepared By:</label><input type="text" id="in-prepared" placeholder="..."></div>
+            <div class="form-group"><label>Reviewed By:</label><input type="text" id="in-reviewed" placeholder="..."></div>
         </div>
         
         <div class="drop-zone" id="drop-zone">
@@ -283,8 +295,9 @@
         let statsData = {};      
 
         const val = (id) => document.getElementById(id).value || "";
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // 將圖片轉換為 Base64 (供 Gemini API 使用)
+        // 轉 Base64
         const getBase64 = (file) => new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -292,7 +305,7 @@
             reader.onerror = error => reject(error);
         });
 
-        // 點擊與拖曳事件
+        // 拖曳事件
         dropZone.addEventListener('click', () => fileInput.click());
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
@@ -305,11 +318,10 @@
             if (e.target.files.length > 0) processFiles(Array.from(e.target.files));
         });
 
-        // 核心處理與 AI 識別邏輯
+        // ================= 核心 AI 與命名邏輯 =================
         async function processFiles(files) {
             files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
-            // 鎖定介面防呆
             dropZone.style.pointerEvents = 'none';
             resetBtn.disabled = true;
             downloadExcelBtn.disabled = true;
@@ -319,7 +331,9 @@
             statsData = {}; 
             let currentLabel = "";
             let currentCounter = 0;
+            
             const apiKey = document.getElementById('api-key').value.trim();
+            const apiProxy = document.getElementById('api-proxy').value.trim();
 
             tbody.innerHTML = ''; 
 
@@ -328,25 +342,31 @@
                 const originalName = file.name;
                 const ext = originalName.slice(originalName.lastIndexOf("."));
                 
-                // 動態產生這列的 HTML
+                // 修正大寫副檔名造成的 MIME Type 空白問題
+                let mimeType = file.type;
+                if (!mimeType) {
+                    if (ext.toLowerCase() === '.jpg' || ext.toLowerCase() === '.jpeg') mimeType = 'image/jpeg';
+                    else if (ext.toLowerCase() === '.png') mimeType = 'image/png';
+                    else mimeType = 'image/jpeg'; 
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${originalName}</td>
-                    <td style="color:#aaa;">${apiKey ? 'AI 識別中...' : '處理中...'}</td>
+                    <td style="color:#aaa;">${apiKey ? '✨ AI 視覺解析中...' : '處理中...'}</td>
                     <td style="color:#aaa;">⏳ 處理中</td>
                 `;
                 tbody.appendChild(tr);
                 tableContainer.scrollTop = tableContainer.scrollHeight;
 
                 let foundLabel = null;
+                let aiErrorMsg = null;
 
-                // 如果有填寫 API Key，呼叫 Gemini Vision
                 if (apiKey) {
                     try {
                         const base64Data = await getBase64(file);
-                        
-                        // 備註：若你有架設之前提過的 Cloudflare Proxy，可將下方網址替換掉
-                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                        let baseUrl = apiProxy ? apiProxy.replace(/\/$/, "") : "https://generativelanguage.googleapis.com";
+                        const apiUrl = `${baseUrl}/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
                         
                         const response = await fetch(apiUrl, {
                             method: 'POST',
@@ -354,10 +374,13 @@
                             body: JSON.stringify({
                                 contents: [{
                                     parts: [
-                                        { text: "請精準讀取圖片中「防火閘編號：」右側的藍色手寫字。請嚴格只回傳該手寫字（例如：巴士站(4)、Chiller room、油缸房(2)），請將全形括號轉換為半形括號，不要加任何引號、不要換行或說明。如果看不到明顯的編號，請回傳 'NONE'。" },
-                                        { inline_data: { mime_type: file.type, data: base64Data } }
+                                        { text: "讀取圖片中「防火閘編號：」右側的藍色手寫字。直接回傳文字(如: 巴士站(4))。不要多餘文字，若看不到回傳 NONE。" },
+                                        { inline_data: { mime_type: mimeType, data: base64Data } }
                                     ]
-                                }]
+                                }],
+                                generationConfig: {
+                                    temperature: 0.1
+                                }
                             })
                         });
 
@@ -366,22 +389,26 @@
                             if (data.candidates && data.candidates[0].content.parts[0].text) {
                                 let extracted = data.candidates[0].content.parts[0].text.trim();
                                 if (extracted !== 'NONE' && extracted.length > 0) {
-                                    // 確保抓到的字沒有奇怪的全形括號或換行
-                                    foundLabel = extracted.replace(/[（［]/g, '(').replace(/[）］]/g, ')').replace(/\n/g, '');
+                                    foundLabel = extracted.replace(/[（［]/g, '(').replace(/[）］]/g, ')').replace(/\n/g, '').trim();
                                 }
                             }
                         } else {
-                            console.warn("AI 識別發生錯誤，可能 API Key 錯誤或網路受限。");
+                            aiErrorMsg = `❌ AI 連線錯誤 (${response.status})`;
                         }
+                        
+                        // 防止請求過快觸發 429 限制 (每分鐘 15 次)
+                        if (i < files.length - 1) {
+                            await delay(4000); 
+                        }
+                        
                     } catch (e) {
-                        console.error("AI 識別失敗:", originalName, e);
+                        aiErrorMsg = "❌ 網路或 Proxy 錯誤";
                     }
                 }
 
                 let newName = "";
                 let statusHtml = "";
 
-                // 邏輯判定：優先使用 AI 識別結果；若無貼紙或沒設 API Key，則使用原本的正則邏輯
                 if (foundLabel) {
                     currentLabel = foundLabel; 
                     currentCounter = 1;
@@ -403,19 +430,17 @@
                             statusHtml = `<span class="status-label">✓ 自動遞增</span>`;
                         } else {
                             newName = originalName;
-                            statusHtml = `<span class="status-warning">⚠️ 無貼紙也無標籤，保持原名</span>`;
+                            statusHtml = aiErrorMsg ? `<span class="status-warning">${aiErrorMsg}</span>` : `<span class="status-warning">⚠️ 無貼紙也無標籤，保持原名</span>`;
                         }
                     }
                 }
 
                 if (currentLabel !== "") {
-                    // statsData 記錄的是每一個附帶括號的標籤（例如 "巴士站(1)"）
                     statsData[currentLabel] = (statsData[currentLabel] || 0) + 1;
                 }
 
                 processedFiles.push({ file, newName });
 
-                // 更新該列畫面
                 tr.innerHTML = `
                     <td>${originalName}</td>
                     <td><strong>${newName}</strong></td>
@@ -423,203 +448,127 @@
                 `;
             }
 
-            // 解鎖介面
             dropZone.style.pointerEvents = 'auto';
             resetBtn.disabled = false;
             downloadExcelBtn.disabled = false;
             downloadZipBtn.disabled = false;
         }
 
-        // 功能 1：重設清空
         resetBtn.addEventListener('click', () => {
             processedFiles = [];
             statsData = {};
-            
-            tbody.innerHTML = `
-                <tr id="empty-row">
-                    <td colspan="3" class="empty-state">尚未上傳任何圖片，請從上方選擇或拖曳檔案</td>
-                </tr>
-            `;
-            
-            // 這裡不清空 API Key 以方便連續操作，只清空其他輸入欄位
-            document.getElementById('in-project').value = '';
-            document.getElementById('in-location').value = '';
-            document.getElementById('in-date').value = '';
-            
+            tbody.innerHTML = `<tr id="empty-row"><td colspan="3" class="empty-state">尚未上傳任何圖片，請從上方選擇或拖曳檔案</td></tr>`;
             resetBtn.disabled = true;
             downloadExcelBtn.disabled = true;
             downloadZipBtn.disabled = true;
-            
             fileInput.value = '';
         });
 
-        // 預先計算統計邏輯
-        function calculateStats() {
-            const baseStats = {};
-            let totalQty = 0;
+        // ================= Excel 完美 1:1 匯出 =================
+        downloadExcelBtn.addEventListener('click', () => {
+            if (Object.keys(statsData).length === 0) return alert("目前沒有成功分類的統計資料！");
+
+            const workbook = XLSX.utils.book_new();
+            const inspectedName = val('in-inspected');
+
+            const centerAlign = { horizontal: "center", vertical: "center" };
+            const leftAlign = { horizontal: "left", vertical: "center" };
+            const rightAlign = { horizontal: "right", vertical: "center" };
+            const borderAll = {
+                top: { style: "thin" }, bottom: { style: "thin" },
+                left: { style: "thin" }, right: { style: "thin" }
+            };
+            const borderBottom = { bottom: { style: "thin" } };
+            const fontTitle = { name: "Arial", sz: 14, bold: true };
+            const fontNormal = { name: "Arial", sz: 12 };
+            const fontBold = { name: "Arial", sz: 12, bold: true };
+
+            const aoa = [];
             
+            // Row 1
+            aoa.push([{v: "FIRE DAMPERS INSPECTION", s: {font: fontTitle, alignment: centerAlign}}, "", "", "", "", "", "", "", ""]);
+            // Row 2-3
+            aoa.push([]); aoa.push([]);
+            // Row 4
+            aoa.push([
+                {v: "Project:", s: {font: fontNormal}}, {v: val('in-project'), s: {font: fontNormal, border: borderBottom}}, "", "", 
+                {v: "Date:", s: {font: fontNormal}}, "", {v: val('in-date'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, "", ""
+            ]);
+            // Row 5
+            aoa.push(["", "", "", "", {v: "FSD Ref.:", s: {font: fontNormal}}, "", {v: val('in-fsd'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, "", ""]);
+            // Row 6
+            aoa.push([
+                {v: "Location:", s: {font: fontNormal}}, {v: val('in-location'), s: {font: fontNormal, border: borderBottom}}, "", "", 
+                {v: "Our Ref.:", s: {font: fontNormal}}, "", {v: val('in-our-ref'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, "", ""
+            ]);
+            // Row 7
+            aoa.push(["", "", "", "", {v: "Rev. No.:", s: {font: fontNormal}}, "", {v: val('in-rev'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, "", ""]);
+            // Row 8
+            aoa.push([{v: "Fire Damper:", s: {font: fontNormal}}, {v: val('in-damper'), s: {font: fontNormal, border: borderBottom}}, "", "", "", "", "", "", ""]);
+            // Row 9
+            aoa.push(["", "", "", "", {v: "Page", s: {font: fontNormal}}, {v: 1, s: {font: fontNormal, alignment: centerAlign}}, {v: "of", s: {font: fontNormal, alignment: centerAlign}}, {v: 1, s: {font: fontNormal, alignment: centerAlign}}, ""]);
+            // Row 10
+            aoa.push([{v: "Inspected:", s: {font: fontNormal}}, {v: inspectedName, s: {font: fontNormal, border: borderBottom}}, "", "", "", "", "", "", ""]);
+            // Row 11
+            aoa.push([]);
+
+            // Headers - Row 12, 13
+            const thStyle = { font: fontNormal, alignment: centerAlign, border: borderAll };
+            aoa.push([{v: "", s: thStyle}, {v: "Fire Damper", s: thStyle}, {v: "Clean Fire", s: thStyle}, {v: "Inspected", s: thStyle}]);
+            aoa.push([{v: "Ref. No.", s: thStyle}, {v: "Ref.", s: thStyle}, {v: "Damper", s: thStyle}, {v: "by", s: thStyle}]);
+
+            // Data Processing
+            const baseStats = {};
             for (const key of Object.keys(statsData)) {
                 const baseLocation = key.replace(/\(\d+\)$/, '').trim();
                 baseStats[baseLocation] = (baseStats[baseLocation] || 0) + 1;
             }
 
-            for (const count of Object.values(baseStats)) {
-                totalQty += count;
-            }
-            
-            return { baseStats, totalQty };
-        }
-
-        // 功能 2：嚴格對齊最新 7 欄式設計的 Excel 下載
-        downloadExcelBtn.addEventListener('click', () => {
-            if (Object.keys(statsData).length === 0) return alert("目前沒有成功分類的統計資料！");
-
-            const workbook = XLSX.utils.book_new();
-            const { baseStats, totalQty } = calculateStats();
-
-            // 定義 Excel 樣式（嚴格控制置中、靠左與框線）
-            const centerAlign = { horizontal: "center", vertical: "center" };
-            const leftAlign = { horizontal: "left", vertical: "center" };
-            const rightAlign = { horizontal: "right", vertical: "center" };
-            const borderAll = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
-            const borderBottom = { bottom: { style: "thin" } };
-            const fontTitle = { name: "Arial", sz: 14, bold: true };
-            const fontNormal = { name: "Arial", sz: 12 };
-
-            const aoa = [];
-            
-            // 標題 Row 1-3 (Index 0~2)
-            aoa.push([{v: "Summary of Fire Dampers", s: {font: fontTitle, alignment: centerAlign}}, "", "", "", "", "", ""]);
-            aoa.push(["", "", "", "", "", "", ""]);
-            aoa.push(["", "", "", "", "", "", ""]);
-            
-            // Row 4: Project
-            aoa.push([
-                {v: "Project:", s: {font: fontNormal, alignment: centerAlign}}, "", "", 
-                {v: val('in-project'), s: {font: fontNormal, alignment: leftAlign, border: borderBottom}}, 
-                {v: "", s: {border: borderBottom}}, 
-                {v: "", s: {border: borderBottom}}, 
-                {v: "", s: {border: borderBottom}}
-            ]);
-            
-            // Row 5: 空白
-            aoa.push(["", "", "", "", "", "", ""]);
-            
-            // Row 6: Location
-            aoa.push([
-                {v: "Location:", s: {font: fontNormal, alignment: centerAlign}}, "", "", 
-                {v: val('in-location'), s: {font: fontNormal, alignment: leftAlign, border: borderBottom}}, 
-                {v: "", s: {border: borderBottom}}, 
-                {v: "", s: {border: borderBottom}}, 
-                {v: "", s: {border: borderBottom}}
-            ]);
-            
-            // Row 7: 空白
-            aoa.push(["", "", "", "", "", "", ""]);
-            
-            // Row 8: Fire Damper (總數) - 注意 D 欄為獨立格子含底線
-            aoa.push([
-                {v: "Fire Damper:", s: {font: fontNormal, alignment: centerAlign}}, "", "", 
-                {v: totalQty, s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, 
-                "", "", ""
-            ]);
-            
-            // Row 9: 空白
-            aoa.push(["", "", "", "", "", "", ""]);
-            
-            // Row 10: Inspection Date
-            aoa.push([
-                {v: "Inspection Date:", s: {font: fontNormal, alignment: centerAlign}}, "", "", 
-                {v: val('in-date'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, 
-                {v: "", s: {border: borderBottom}}, 
-                "", ""
-            ]);
-            
-            // Row 11-12: 空白
-            aoa.push(["", "", "", "", "", "", ""]);
-            aoa.push(["", "", "", "", "", "", ""]);
-
-            // Headers Row 13 (完美配合 7 欄格式)
-            const thStyle = { font: fontNormal, alignment: centerAlign, border: borderAll };
-            aoa.push([
-                {v: "Ref. No.", s: thStyle}, {v: "", s: thStyle},
-                {v: "Location", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle},
-                {v: "Qty", s: thStyle}
-            ]);
-
-            // Data Rows (資料置中對齊且全框線配合 A~G 欄合併)
             let rowIdx = 1;
+            let totalQty = 0;
             for (const [base, count] of Object.entries(baseStats)) {
-                aoa.push([
-                    {v: rowIdx, s: thStyle}, {v: "", s: thStyle},
-                    {v: base, s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle},
-                    {v: count, s: thStyle}
-                ]);
+                aoa.push([{v: rowIdx, s: thStyle}, {v: base, s: thStyle}, {v: count, s: thStyle}, {v: inspectedName, s: thStyle}]);
+                totalQty += count;
                 rowIdx++;
             }
 
-            // Total 前的一行空框線
-            aoa.push([
-                {v: "", s: thStyle}, {v: "", s: thStyle},
-                {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle},
-                {v: "", s: thStyle}
-            ]);
+            // Total Row
+            aoa.push(["", {v: "Total:", s: {font: fontBold, alignment: rightAlign}}, {v: totalQty, s: {font: fontBold, alignment: centerAlign, border: borderAll}}, ""]);
 
-            // Total Row (A:B 合併空白, C:E 合併空白, F 是 "Total:", G 是數量)
+            // Footer
+            aoa.push([]); aoa.push([]); aoa.push([]); aoa.push([]);
+            const footerRowIdx = aoa.length;
             aoa.push([
-                {v: "", s: thStyle}, {v: "", s: thStyle},
-                {v: "", s: thStyle}, {v: "", s: thStyle}, {v: "", s: thStyle},
-                {v: "Total:", s: {font: fontNormal, alignment: rightAlign, border: borderAll}},
-                {v: totalQty, s: thStyle}
+                {v: "Prepared By:", s: {font: fontNormal}}, {v: val('in-prepared'), s: {font: fontNormal, border: borderBottom}}, "", 
+                {v: "Reviewed By:", s: {font: fontNormal}}, {v: val('in-reviewed'), s: {font: fontNormal, alignment: centerAlign, border: borderBottom}}, "", "", "", ""
             ]);
 
             const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-            // 跨欄置中與合併儲存格設定 (嚴格遵照 7 欄式設計)
-            const merges = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // A1:G1 標題
-                { s: { r: 3, c: 0 }, e: { r: 3, c: 2 } }, // A4:C4 Project:
-                { s: { r: 3, c: 3 }, e: { r: 3, c: 6 } }, // D4:G4 Project Value
-                { s: { r: 5, c: 0 }, e: { r: 5, c: 2 } }, // A6:C6 Location:
-                { s: { r: 5, c: 3 }, e: { r: 5, c: 6 } }, // D6:G6 Location Value
-                { s: { r: 7, c: 0 }, e: { r: 7, c: 2 } }, // A8:C8 Fire Damper:
-                // D8 為獨立不合併的儲存格
-                { s: { r: 9, c: 0 }, e: { r: 9, c: 2 } }, // A10:C10 Inspection Date:
-                { s: { r: 9, c: 3 }, e: { r: 9, c: 4 } }, // D10:E10 Date Value
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // A1:I1
+                { s: { r: 3, c: 1 }, e: { r: 3, c: 3 } }, // B4:D4
+                { s: { r: 3, c: 6 }, e: { r: 3, c: 8 } }, // G4:I4
+                { s: { r: 4, c: 6 }, e: { r: 4, c: 8 } }, // G5:I5
+                { s: { r: 5, c: 1 }, e: { r: 5, c: 3 } }, // B6:D6
+                { s: { r: 5, c: 6 }, e: { r: 5, c: 8 } }, // G6:I6
+                { s: { r: 6, c: 6 }, e: { r: 6, c: 8 } }, // G7:I7
+                { s: { r: 7, c: 1 }, e: { r: 7, c: 3 } }, // B8:D8
+                { s: { r: 9, c: 1 }, e: { r: 9, c: 3 } }, // B10:D10
+                { s: { r: footerRowIdx, c: 1 }, e: { r: footerRowIdx, c: 2 } }, // B:C (Prepared)
+                { s: { r: footerRowIdx, c: 4 }, e: { r: footerRowIdx, c: 7 } }  // E:H (Reviewed)
             ];
 
-            // 處理表格內的合併 (Ref. No -> A:B, Location -> C:F, Qty -> G 獨立)
-            let startRow = 12; // Row 13 (index 12)
-            for(let i = 0; i < rowIdx + 2; i++){
-                merges.push({ s: { r: startRow + i, c: 0 }, e: { r: startRow + i, c: 1 } }); // A:B
-                
-                if (i < rowIdx + 1) { 
-                    // 一般資料列及空白列: C:F 合併
-                    merges.push({ s: { r: startRow + i, c: 2 }, e: { r: startRow + i, c: 5 } });
-                } else { 
-                    // Total 列: C:E 合併, F是"Total:"
-                    merges.push({ s: { r: startRow + i, c: 2 }, e: { r: startRow + i, c: 4 } });
-                }
-            }
-
-            ws['!merges'] = merges;
-
-            // 完美對應 7 欄式欄寬設定 (完全按照您 Excel 檔案的屬性)
             ws['!cols'] = [
-                { wch: 6.4 },  // A
-                { wch: 6.4 },  // B
-                { wch: 8.4 },  // C
-                { wch: 12.4 }, // D
-                { wch: 12.6 }, // E
-                { wch: 14.8 }, // F
-                { wch: 19.0 }  // G
+                { wch: 12 }, { wch: 18 }, { wch: 14 }, { wch: 14 },
+                { wch: 6 }, { wch: 6 }, { wch: 4 }, { wch: 8 }, { wch: 6 }
             ];
 
             XLSX.utils.book_append_sheet(workbook, ws, "Summary_Report");
             XLSX.writeFile(workbook, "Summary_Report.xlsx");
         });
 
-        // 功能 3：打包下載 ZIP
+        // ================= 打包 ZIP =================
         downloadZipBtn.addEventListener('click', async () => {
             if (processedFiles.length === 0) return;
 
@@ -629,22 +578,17 @@
 
             try {
                 const zip = new JSZip();
-                processedFiles.forEach(item => {
-                    zip.file(item.newName, item.file);
-                });
+                processedFiles.forEach(item => zip.file(item.newName, item.file));
                 const content = await zip.generateAsync({ type: "blob" });
-                
                 const url = URL.createObjectURL(content);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = "Renamed_Images.zip";
                 document.body.appendChild(a);
                 a.click();
-                
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             } catch (error) {
-                console.error("ZIP 打包失敗:", error);
                 alert("打包過程發生錯誤，請查看 Console。");
             } finally {
                 downloadZipBtn.innerText = originalText;
